@@ -2,6 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('proxmoxai_prefs')
+          var p = raw ? JSON.parse(raw) : {}
+          var theme = p.theme || 'midnight'
+          var scheme = p.color_scheme || 'system'
+          var LIGHT_VARIANTS = { anthropic: 'anthropic-light', v0: 'vercel-light', 'github-dim': 'github-light' }
+          if (theme === 'system') {
+            theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'
+          }
+          if (scheme === 'light' && LIGHT_VARIANTS[theme]) theme = LIGHT_VARIANTS[theme]
+          document.documentElement.setAttribute('data-theme', theme)
+          document.documentElement.setAttribute('data-density', p.density || 'comfortable')
+          if (p.reduced_motion) document.documentElement.setAttribute('data-motion', 'reduced')
+          document.documentElement.lang = p.locale || 'vi'
+        } catch (_) {}
+      })()
+    </script>
+    <link rel="stylesheet" href="%PUBLIC_URL%/theme-kit/theme.css">
     <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta
       name="viewport"
