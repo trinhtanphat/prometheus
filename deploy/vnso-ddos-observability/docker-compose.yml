@@ -1,0 +1,122 @@
+name: vnso-ddos-observability
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.11.2
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus/data
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.wal-compression
+      - --query.timeout=30s
+      - --web.enable-lifecycle
+      - --web.enable-admin-api
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus/data
+    ports:
+      - "9090:9090"
+    networks:
+      - oob_mgmt_network
+    depends_on:
+      - alertmanager
+      - wanguard-exporter
+      - blackbox-exporter
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager/data
+      - --cluster.listen-address=0.0.0.0:9094
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager/data
+    ports:
+      - "9093:9093"
+      - "9094:9094/tcp"
+      - "9094:9094/udp"
+    networks:
+      - oob_mgmt_network
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?set GRAFANA_ADMIN_USER in .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - oob_mgmt_network
+    depends_on:
+      - prometheus
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.27.0
+    container_name: blackbox_exporter
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "9115:9115"
+    networks:
+      - oob_mgmt_network
+
+  wanguard-exporter:
+    build: ./exporter
+    container_name: wanguard_exporter
+    restart: unless-stopped
+    environment:
+      WANGUARD_API_URL: ${WANGUARD_API_URL:?set WANGUARD_API_URL in .env}
+      WANGUARD_API_TOKEN: ${WANGUARD_API_TOKEN:?set WANGUARD_API_TOKEN in .env}
+      WANGUARD_EXPORTER_POLL_SECONDS: "5"
+      WANGUARD_EXPORTER_PORT: "9100"
+      WANGUARD_VERIFY_TLS: "true"
+    ports:
+      - "9100:9100"
+    networks:
+      - oob_mgmt_network
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12-alpine
+    container_name: clickhouse_flowdb
+    restart: unless-stopped
+    profiles:
+      - flow-analytics
+    environment:
+      CLICKHOUSE_DB: wanguard
+      CLICKHOUSE_USER: wanguard
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+    volumes:
+      - ./clickhouse/init-flow-db.sql:/docker-entrypoint-initdb.d/init-flow-db.sql:ro
+      - clickhouse_data:/var/lib/clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    networks:
+      - oob_mgmt_network
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  clickhouse_data:
+
+networks:
+  oob_mgmt_network:
+    driver: bridge

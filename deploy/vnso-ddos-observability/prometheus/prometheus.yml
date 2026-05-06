@@ -1,0 +1,103 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+    observability_stack: vnso-ddos
+    replica: prometheus-1
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: prometheus
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: wanguard_console_api
+    scrape_interval: 5s
+    scrape_timeout: 3s
+    static_configs:
+      - targets:
+          - wanguard-exporter:9100
+        labels:
+          role: mitigation-control-plane
+
+  - job_name: bgp_routers
+    scrape_interval: 5s
+    scrape_timeout: 3s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/routers/*.json
+        refresh_interval: 1m
+
+  - job_name: ddos_filters
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/filters/*.json
+        refresh_interval: 1m
+    metric_relabel_configs:
+      - source_labels: [source_ip]
+        regex: .+
+        action: drop
+      - source_labels: [dest_ip]
+        regex: .+
+        action: drop
+      - source_labels: [src_port]
+        regex: .+
+        action: drop
+      - source_labels: [dst_port]
+        regex: .+
+        action: drop
+
+  - job_name: ddos_sensors
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/sensors/*.json
+        refresh_interval: 1m
+    metric_relabel_configs:
+      - source_labels: [source_ip]
+        regex: .+
+        action: drop
+      - source_labels: [dest_ip]
+        regex: .+
+        action: drop
+      - source_labels: [src_port]
+        regex: .+
+        action: drop
+      - source_labels: [dst_port]
+        regex: .+
+        action: drop
+
+  - job_name: blackbox_vip_check
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/vips/*.json
+        refresh_interval: 1m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

@@ -1,0 +1,94 @@
+groups:
+  - name: ddos_mitigation_health
+    interval: 15s
+    rules:
+      - alert: WanguardExporterDown
+        expr: up{job="wanguard_console_api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Wanguard exporter is down"
+          description: "Prometheus cannot scrape the Wanguard API middleware, so mitigation API state is blind."
+
+      - alert: WanguardApiFailure
+        expr: increase(wanguard_api_http_requests_total{status=~"5.."}[2m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Wanguard API is returning 5xx errors"
+          description: "Automated mitigation may fail because the Console API is returning server errors."
+
+      - alert: WanguardLicenseExpiring
+        expr: wanguard_license_days_remaining < 14
+        for: 1h
+        labels:
+          severity: warning
+          team: procurement
+        annotations:
+          summary: "Wanguard license expires in less than 14 days"
+          description: "Renew the license before the Console or Sensors lose mitigation capability."
+
+      - alert: WanguardSensorDisconnected
+        expr: wanguard_sensor_status{state="disconnected"} > 0
+        for: 3m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Sensor {{ $labels.sensor_name }} lost connection to Console"
+          description: "Traffic may still flow, but anomalies from this sensor are not being reported."
+
+      - alert: BGPSessionDown
+        expr: bgp_session_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: network
+        annotations:
+          summary: "BGP session down on {{ $labels.instance }}"
+          description: "The mitigation system may not be able to inject RTBH or Flowspec routes."
+
+      - alert: BGPBlastRadiusExceeded
+        expr: delta(bgp_prefixes_exported[5m]) > 500
+        for: 1m
+        labels:
+          severity: critical
+          team: network
+          tier: vip
+        annotations:
+          summary: "BGP route leak or mass blackhole suspected"
+          description: "More than 500 BGP prefixes were exported within 5 minutes. Verify attack scale versus automation/precondition failure immediately."
+
+      - alert: FilterCapacityWarning
+        expr: sum by (instance) (rate(node_network_receive_bytes_total{job="ddos_filters",device=~"eth.*|ens.*|eno.*|bond.*"}[5m])) > 10000000000
+        for: 2m
+        labels:
+          severity: warning
+          team: network
+        annotations:
+          summary: "Scrubbing filter {{ $labels.instance }} is approaching capacity"
+          description: "Receive throughput is above 10 GB/s. Consider ECMP scale-out or upstream cloud scrubbing."
+
+      - alert: XDPPacketDropSpike
+        expr: sum by (instance) (rate(ebpf_xdp_dropped_packets_total{job="ddos_filters"}[1m])) > 1000000
+        for: 1m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "XDP drop rate spike on {{ $labels.instance }}"
+          description: "Filter is dropping more than 1M packets per second. Confirm attack vector and filter health."
+
+      - alert: FalsePositiveDetected
+        expr: (probe_success{job="blackbox_vip_check"} == 0) and on() (sum(wanguard_active_responses) > 0)
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Protected target {{ $labels.instance }} is unreachable during active mitigation"
+          description: "Possible false positive: scrubbing may be dropping clean traffic while mitigation is active."

@@ -1,0 +1,73 @@
+groups:
+  - name: infrastructure_health
+    interval: 15s
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "Prometheus cannot scrape metrics from this target."
+
+      - alert: HostOutOfDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} * 100) / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} < 10
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Host {{ $labels.instance }} has less than 10 percent disk free"
+          description: "Low disk space can corrupt local TSDB or break exporter operation."
+
+      - alert: HostHighCpuLoad
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Host {{ $labels.instance }} CPU load is above 85 percent"
+          description: "Sustained CPU pressure can delay scrapes, detection, or packet filtering."
+
+      - alert: HostHighSoftIRQ
+        expr: 100 * avg by (instance) (rate(node_cpu_seconds_total{mode="softirq"}[1m])) > 80
+        for: 2m
+        labels:
+          severity: critical
+          team: network
+        annotations:
+          summary: "High SoftIRQ on {{ $labels.instance }}"
+          description: "High packet-processing CPU indicates high PPS load or NIC queue bottleneck."
+
+      - alert: NodeNetworkDrops
+        expr: sum by (instance, device) (rate(node_network_receive_drop_total{device!~"lo|docker.*|veth.*"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: network
+        annotations:
+          summary: "Network receive drops on {{ $labels.instance }} {{ $labels.device }}"
+          description: "NIC or kernel receive queue drops are occurring. Check ring buffers, RSS, XDP, and interface errors."
+
+      - alert: PrometheusWalFsyncSlow
+        expr: histogram_quantile(0.99, sum by (le) (rate(prometheus_tsdb_wal_fsync_duration_seconds_bucket[5m]))) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Prometheus WAL fsync p99 is slower than 10ms"
+          description: "Disk I/O is too slow for sustained ingestion. Verify WAL compression and storage class."
+
+      - alert: PrometheusRuleEvaluationSlow
+        expr: max by (rule_group) (prometheus_rule_group_last_duration_seconds) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Prometheus rule group {{ $labels.rule_group }} is slow"
+          description: "Rule evaluation is taking more than 10 seconds. Check high-cardinality PromQL or missing recording rules."

@@ -1,0 +1,71 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: slack-standard-alerts
+  group_by:
+    - alertname
+    - tier
+    - datacenter
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - alertname="BGPBlastRadiusExceeded"
+      receiver: pagerduty-urgent
+      group_wait: 0s
+      repeat_interval: 15m
+
+    - matchers:
+        - tier="vip"
+        - severity="critical"
+      receiver: pagerduty-urgent
+      continue: true
+
+    - matchers:
+        - alertname=~"Wanguard.*"
+      receiver: slack-wanguard-ops
+
+receivers:
+  - name: slack-standard-alerts
+    slack_configs:
+      - api_url: https://hooks.slack.com/services/REPLACE/STANDARD/WEBHOOK
+        channel: "#ddos-alerts-standard"
+        send_resolved: true
+        title: "[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}"
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Details:* {{ .Annotations.description }}
+          *Target:* {{ .Labels.instance }}
+          {{ end }}
+
+  - name: slack-wanguard-ops
+    slack_configs:
+      - api_url: https://hooks.slack.com/services/REPLACE/WANGUARD/WEBHOOK
+        channel: "#wanguard-ops"
+        send_resolved: true
+        title: "[{{ .Status | toUpper }}] Wanguard system alert"
+        text: |-
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Details:* {{ .Annotations.description }}
+          *Target:* {{ .Labels.instance }}
+          {{ end }}
+
+  - name: pagerduty-urgent
+    pagerduty_configs:
+      - routing_key: replace-with-pagerduty-routing-key
+        send_resolved: true
+        description: "{{ .CommonAnnotations.summary }}"
+        severity: critical
+
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal:
+      - alertname
+      - instance

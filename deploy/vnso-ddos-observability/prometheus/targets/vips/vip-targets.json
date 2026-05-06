@@ -1,0 +1,21 @@
+[
+  {
+    "targets": [
+      "https://api.vip-bank.vn",
+      "https://portal.vip-customer.vn"
+    ],
+    "labels": {
+      "customer": "vip-bank",
+      "tier": "vip"
+    }
+  },
+  {
+    "targets": [
+      "https://game-service.vn"
+    ],
+    "labels": {
+      "customer": "game-service",
+      "tier": "standard"
+    }
+  }
+]

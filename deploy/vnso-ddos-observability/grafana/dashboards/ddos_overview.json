@@ -1,0 +1,222 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "global:inbound_pps:rate1m",
+          "legendFormat": "Inbound before scrubbing",
+          "refId": "A"
+        },
+        {
+          "expr": "global:clean_pps:rate1m",
+          "legendFormat": "Clean traffic after scrubbing",
+          "refId": "B"
+        },
+        {
+          "expr": "global:dropped_pps:rate1m",
+          "legendFormat": "Dropped by filter",
+          "refId": "C"
+        }
+      ],
+      "title": "Traffic Before vs After Scrubbing",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "wanguard:active_responses:sum",
+          "legendFormat": "Active responses",
+          "refId": "A"
+        }
+      ],
+      "title": "Active API Responses",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "bgp_prefixes_exported",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Mitigation BGP Routes",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum by (protocol, tcp_flag) (wanguard_active_anomalies)",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Top Attack Vectors",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "probe_success{job=\"blackbox_vip_check\"}",
+          "legendFormat": "{{tier}} {{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Protected VIP Reachability",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "ddos",
+    "wanguard",
+    "network"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "VNSO Anti-DDoS Overview",
+  "uid": "vnso-ddos-overview",
+  "version": 1,
+  "weekStart": ""
+}

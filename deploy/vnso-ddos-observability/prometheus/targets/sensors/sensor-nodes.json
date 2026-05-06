@@ -1,0 +1,13 @@
+[
+  {
+    "targets": [
+      "10.0.3.10:9100",
+      "10.0.3.11:9100"
+    ],
+    "labels": {
+      "datacenter": "hcm-dc1",
+      "role": "ddos-sensor",
+      "sensor_cluster": "sensor-hcm"
+    }
+  }
+]

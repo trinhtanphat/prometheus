@@ -1,0 +1,13 @@
+[
+  {
+    "targets": [
+      "edge-router-1-mgmt.vnso.local:9430",
+      "edge-router-2-mgmt.vnso.local:9430"
+    ],
+    "labels": {
+      "datacenter": "hcm-dc1",
+      "role": "edge-router",
+      "router_stack": "border"
+    }
+  }
+]

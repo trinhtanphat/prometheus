@@ -1,0 +1,21 @@
+groups:
+  - name: ddos_precomputed_metrics
+    interval: 15s
+    rules:
+      - record: global:inbound_pps:rate1m
+        expr: sum(rate(ifHCInUcastPkts{job="bgp_routers"}[1m]))
+
+      - record: global:inbound_bps:rate1m
+        expr: sum(rate(ifHCInOctets{job="bgp_routers"}[1m])) * 8
+
+      - record: global:clean_pps:rate1m
+        expr: sum(rate(ebpf_xdp_passed_packets_total{job="ddos_filters"}[1m]))
+
+      - record: global:dropped_pps:rate1m
+        expr: sum(rate(ebpf_xdp_dropped_packets_total{job="ddos_filters"}[1m]))
+
+      - record: instance:node_softirq:rate1m
+        expr: rate(node_cpu_seconds_total{mode="softirq"}[1m])
+
+      - record: wanguard:active_responses:sum
+        expr: sum(wanguard_active_responses)
